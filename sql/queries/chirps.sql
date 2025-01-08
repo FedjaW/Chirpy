@@ -7,3 +7,7 @@ RETURNING *;
 
 -- name: DeleteAllChirps :exec
 DELETE FROM chirps;
+
+-- name: ListChirps :many
+SELECT * FROM chirps
+ORDER BY created_at ASC;
