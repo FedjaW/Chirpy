@@ -3,9 +3,11 @@ package main
 import (
 	"encoding/json"
 	"net/http"
-    "github.com/google/uuid"
-    "time"
-    "github.com/FedjaW/Chirpy/internal/database"
+	"time"
+
+	"github.com/FedjaW/Chirpy/internal/auth"
+	"github.com/FedjaW/Chirpy/internal/database"
+	"github.com/google/uuid"
 )
 
 type Chirp struct {
@@ -16,11 +18,9 @@ type Chirp struct {
     UserID uuid.UUID `json:"user_id"`
 }
 
-
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Body string `json:"body"`
-		UserID uuid.UUID `json:"user_id"`
 	}
 	type response struct {
         Chirp
@@ -34,6 +34,18 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+    token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "no token", err)
+		return
+	}
+
+	userID, err := auth.ValidateJWT(token, cfg.jwtSecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT", err)
+		return
+	}
+
 	const maxChirpLength = 140
 	if len(params.Body) > maxChirpLength {
 		respondWithError(w, http.StatusBadRequest, "Chirp is too long", nil)
@@ -42,7 +54,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 
     createChirpParams := database.CreateChirpParams{
         Body: params.Body,
-        UserID: params.UserID,
+        UserID: userID,
     }
     chirp, err := cfg.db.CreateChirp(r.Context(), createChirpParams)
 	if err != nil {

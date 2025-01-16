@@ -5,6 +5,8 @@ import (
     "github.com/google/uuid"
     "encoding/json"
 	"net/http"
+    "github.com/FedjaW/Chirpy/internal/database"
+    "github.com/FedjaW/Chirpy/internal/auth"
 )
 
 type User struct {
@@ -12,11 +14,13 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+	IsChirpyRed bool  `json:"is_chirpy_red"`
 }
 
 func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Email string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	type response struct {
@@ -30,8 +34,16 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
         respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
         return
     }
-
-    user, err := cfg.db.CreateUser(r.Context(), params.Email)
+    hashedPassword, err := auth.HashPassword(params.Password)
+    if err != nil {
+        respondWithError(w, http.StatusInternalServerError, "Couldn't hash password", err)
+        return
+    }
+    createUserParams := database.CreateUserParams{
+        Email: params.Email,
+        HashedPassword: hashedPassword,
+    }
+    user, err := cfg.db.CreateUser(r.Context(), createUserParams)
     if err != nil {
         respondWithError(w, http.StatusInternalServerError, "Couldn't create user", err)
         return
@@ -43,6 +55,7 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
             CreatedAt: user.CreatedAt,
             UpdatedAt: user.UpdatedAt,
             Email: user.Email,
+            IsChirpyRed: user.IsChirpyRed,
         },
     })
 }
