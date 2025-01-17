@@ -13,10 +13,6 @@ func (cfg *apiConfig) handlerGetChirp(w http.ResponseWriter, r* http.Request) {
 		return
 	}
 
-    type response struct {
-        Chirp
-    }
-
     dbChirp, err := cfg.db.GetChirp(r.Context(), id)
 	if err != nil {
 		respondWithError(w, http.StatusNotFound, "Couldn't get chirp", err)
